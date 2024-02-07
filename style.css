@@ -10,7 +10,7 @@ h1 {
     background: navy;
 }
 
-.container{
+.container {
     display: flex;
     gap: 35px;
     padding: 30px;
@@ -119,4 +119,3 @@ h1 {
     max-width: 70px;
     margin: 5px 0 -12px 0;
 }
-
