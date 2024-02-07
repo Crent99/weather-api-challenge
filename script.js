@@ -6,74 +6,54 @@ const weatherCardsDiv = document.querySelector(".weather-cards");
 
 const API_KEY = "b85ba95ce4b9c8578a16802cfecb6689"; // API key for OpenWeatherMap API
 
-const createWeatherCard = (cityName, weatherItem, index) =>
-    `<div class="weather-card">
-        <h2 class="city-name">${cityName}</h2>
-        <p class="date">${new Date(weatherItem.dt * 1000).toDateString()}</p>
-        <p class="temp">${weatherItem.temp.day}°C</p>
-        <p class="description">${weatherItem.weather[0].description}</p>
-    </div>`; // Create a weather card for the given city and weather data
-
-const fetchWeatherData = async (cityName) => {
-    const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${API_KEY}&units=metric`
-    );
-    const data = await response.json();
-    return data;
+const createWeatherCard = (weatherItem) => {
+    return `<li class="card">
+                <h3> (${weatherItem.dt_txt.split(" ")[0]})</h3>
+                <img src="https://openweathermap.org/img/wn/${weatherItem.weather[0].icon}@2x.png" alt="weather-icon">
+                <h4>Temp: ${(weatherItem.main.temp - 273.15).toFixed(2)}&deg;F</h3>
+                <h4>Wind: ${weatherItem.wind.speed} Mph</h4>
+                <h4>Humidity: ${weatherItem.main.humidity}%</h4>
+            </li>`;
 }
+const getWeatherDetails = (cityName, lat, lon) => {
+    const WEATHER_API_URL = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}`;
 
-const fetchWeatherForecast = async (lat, lon) => {
-    const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/onecall?lat=${lat}&lon=${lon}&exclude=hourly,minutely&appid=${API_KEY}&units=metric`
-    );
-    const data = await response.json();
-    return data;
-}
-
-const fetchWeatherDataByCoords = async (lat, lon) => {
-    const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
-    );
-    const data = await response.json();
-    return data;
-}
-
-const fetchWeatherDataByCity = async (cityName) => {
-    const weatherData = await fetchWeatherData(cityName);
-    const weatherForecast = await fetchWeatherForecast(weatherData.coord.lat, weatherData.coord.lon);
-    return { weatherData, weatherForecast };
-}
-
-const fetchWeatherDataByLocation = async (lat, lon) => {
-    const weatherData = await fetchWeatherDataByCoords(lat, lon);
-    const weatherForecast = await fetchWeatherForecastByCoords(lat, lon);
-    return { weatherData, weatherForecast };
-}
-
-const renderWeatherData = (cityName, weatherData, weatherForecast) => {
-    currentWeatherDiv.innerHTML = `
-        <h1 class="city-name">${cityName}</h1>
-        <p class="date">${new Date(weatherData.dt * 1000).toDateString()}</p>
-        <p class="temp">${weatherData.main.temp}°C</p>
-        <p class="description">${weatherData.weather[0].description}</p>
-    `; // Render the current weather data
-
-    weatherCardsDiv.innerHTML = weatherForecast.daily.map((weatherItem, index) => createWeatherCard(cityName, weatherItem, index)).join(""); // Render the weather forecast
-}
-
-searchButton.addEventListener("click", async () => {
-    const cityName = cityInput.value;
-    const { weatherData, weatherForecast } = await fetchWeatherDataByCity(cityName);
-    renderWeatherData(cityName, weatherData, weatherForecast);
-});
-
-locationButton.addEventListener("click", async () => {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const { weatherData, weatherForecast } = await fetchWeatherDataByLocation(position.coords.latitude, position.coords.longitude);
-            renderWeatherData(weatherData.name, weatherData, weatherForecast);
+    fetch(WEATHER_API_URL).then(res => res.json()).then(data => {
+        // Filter the forecasts to get only one forecast per day
+        const uniqueForecastDays = [];
+        const fiveDaysForecast = data.list.filter(forecast => {
+            const forecastDate = new Date(forecast.dt_txt).getDate();
+            if (!uniqueForecastDays.includes(forecastDate)) {
+                return uniqueForecastDays.push(forecastDate);
+            }
         });
-    } else {
-        alert("Geolocation is not supported by this browser.");
-    }
-});
+        
+        // Clearing previous weather data 
+        cityInput.value = ""; 
+        weatherCardsDiv.innerHTML = "";
+
+        console.log(fiveDaysForecast);
+        fiveDaysForecast.forEach(weatherItem => {
+            weatherCardsDiv.insertAdjacentHTML("beforeend", createWeatherCard(weatherItem));
+        });
+    }).catch(() => {
+        alert("An error occurred while fetching the weather forecast!");
+    });
+}
+
+const getCityCoordinates = () => {
+    const cityName = cityInput.value.trim(); // Get user entered city name and remove extra spaces
+    if (!cityName) return; // Return if CityName is empty
+    const GEOCODING_API_URL = `https://api.openweathermap.org/geo/1.0/direct?q=${cityName}&limit=5&appid=${API_KEY}`;
+
+    // Get entered city coordinates (latitude, longitude, and name) from the API response
+    fetch(GEOCODING_API_URL).then(res => res.json()).then(data => {
+        if (!data.length) return alerr("No coordinates found for ${cityName}");
+        const { name, lat, lon } = data[0];
+        getWeatherDetails(name, lat, lon);
+    }).catch(() => {
+        alert("an error occurred while fetching the coordinates!")
+    });
+}
+
+searchButton.addEventListener("click", getCityCoordinates);
