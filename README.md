@@ -5,7 +5,7 @@
 - [Title](#title)
 - [Description](#description)
 - [Screenshots](#screenshots)
-- [Contributors](#contributors)
+- [Contacts](#contacts)
 
 ## Description
 
